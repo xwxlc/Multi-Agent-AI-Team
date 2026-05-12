@@ -1,0 +1,9 @@
+.env
+*.key
+config/agents.yaml
+__pycache__/
+*.pyc
+workspace/
+project_output/
+node_modules/
+.DS_Store
