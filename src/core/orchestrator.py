@@ -84,6 +84,21 @@ class Orchestrator:
         self._task_counter += 1
         return f"task{self._task_counter:03d}"
 
+    def _seed_counter_from_tasks_md(self) -> None:
+        """Scan existing TASKS.md for max task ID counter to avoid collision."""
+        import os
+        if not os.path.isfile("TASKS.md"):
+            return
+        from .sync import TasksMd
+        sections = TasksMd.parse()
+        max_num = 0
+        for sec_tasks in sections.values():
+            for t in sec_tasks:
+                tid = t.get("task", "")
+                if tid.startswith("task") and len(tid) > 4 and tid[4:].isdigit():
+                    max_num = max(max_num, int(tid[4:]))
+        self._task_counter = max_num
+
     def _agent_timeout(self, role: str) -> Optional[int]:
         cfg = self.router.get_agent_config(role)
         t = cfg.get("timeout")
@@ -94,6 +109,9 @@ class Orchestrator:
         """Execute full async pipeline with timeout relay."""
         t0 = time.monotonic()
         wd = work_dir or self.workspace
+
+        # Seed task counter from existing TASKS.md to avoid ID collision
+        self._seed_counter_from_tasks_md()
 
         if not resume and Lock.is_locked():
             logger.warning("TASKS.md.lock exists — auto-resuming from checkpoint...")
@@ -172,6 +190,9 @@ class Orchestrator:
 
             elapsed = time.monotonic() - t0
             summary["elapsed_sec"] = round(elapsed, 1)
+
+            # Archive completed tasks to date-organized history
+            TasksMd.archive_done()
 
             self._write_status("done", "完成", "4/4", t0,
                                tasks_summary=f"✓ {len(self.task_queue._completed)} completed")

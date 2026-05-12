@@ -124,7 +124,37 @@ class TasksMd:
 
     @staticmethod
     def init(path: str = TASKS_MD, initial_task: Optional[dict] = None) -> str:
-        """Create a fresh TASKS.md with optional initial task in Todo."""
+        """Create or append to TASKS.md.
+
+        If file exists, append initial_task to Todo (preserving history).
+        If not, create fresh file with initial_task in Todo.
+        """
+        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+
+        if os.path.isfile(path) and initial_task:
+            sections = TasksMd.parse(path)
+            if initial_task.get("task"):
+                # Check if this task already exists (same ID) — skip if so
+                for sec_tasks in sections.values():
+                    for t in sec_tasks:
+                        if t.get("task") == initial_task["task"] and \
+                           t.get("title") == initial_task.get("title"):
+                            with open(path) as f:
+                                return f.read()
+                initial_task["_done_mark"] = False
+                sections.setdefault("todo", []).append(initial_task)
+                TasksMd._rebuild_file(path, sections)
+                with open(path) as f:
+                    return f.read()
+            return TasksMd._read_all(path)
+
+        content = TasksMd._build_fresh(initial_task)
+        with open(path, "w") as f:
+            f.write(content)
+        return content
+
+    @staticmethod
+    def _build_fresh(initial_task: Optional[dict] = None) -> str:
         lines = [
             "# TASKS.md — 任务中心",
             "",
@@ -134,7 +164,6 @@ class TasksMd:
         if initial_task:
             lines.append(TasksMd._format_task(initial_task, done=False))
             lines.append("")
-
         lines += [
             "## Doing",
             "",
@@ -143,12 +172,12 @@ class TasksMd:
             "## Failed",
             "",
         ]
+        return "\n".join(lines)
 
-        content = "\n".join(lines)
-        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-        with open(path, "w") as f:
-            f.write(content)
-        return content
+    @staticmethod
+    def _read_all(path: str) -> str:
+        with open(path) as f:
+            return f.read()
 
     @staticmethod
     def add_task(path: str, task: dict, section: str = "todo") -> None:
@@ -281,6 +310,62 @@ class TasksMd:
                     queue._failed.add(tid)
                 count += 1
         return count
+
+    @staticmethod
+    def archive_done(path: str = TASKS_MD, history_path: str = "TASKS_HISTORY.md") -> None:
+        """Copy newly completed tasks into a date-organized history file.
+
+        Reads Done section from TASKS.md, appends unseen tasks to TASKS_HISTORY.md
+        under today's date section. TASKS.md is not modified.
+        """
+        sections = TasksMd.parse(path)
+        done_tasks = sections.get("done", [])
+        if not done_tasks:
+            return
+
+        today = datetime.now().strftime("%Y-%m-%d")
+
+        # Parse existing history
+        history: dict[str, list[str]] = {}
+        recorded_ids: set[str] = set()
+        if os.path.isfile(history_path):
+            with open(history_path) as f:
+                current_date = None
+                for line in f:
+                    line = line.rstrip()
+                    if line.startswith("## "):
+                        current_date = line[3:].strip()
+                    elif line.startswith("- [") and current_date:
+                        history.setdefault(current_date, []).append(line)
+                        m = re.search(r"\]\s+(\S+)", line)
+                        if m:
+                            recorded_ids.add(m.group(1))
+
+        # Add new done tasks not yet in history
+        new_entries: list[str] = []
+        for t in done_tasks:
+            tid = t.get("task", "")
+            if tid and tid not in recorded_ids:
+                new_entries.append(TasksMd._format_task(t, done=True))
+                recorded_ids.add(tid)
+
+        if not new_entries:
+            return
+
+        history.setdefault(today, []).extend(new_entries)
+
+        # Rebuild history file — newest date first
+        lines = ["# 任务历史", ""]
+        for date in sorted(history.keys(), reverse=True):
+            entries = history[date]
+            if entries:
+                lines.append(f"## {date}")
+                lines.append("")
+                lines.extend(entries)
+                lines.append("")
+
+        with open(history_path, "w") as f:
+            f.write("\n".join(lines))
 
     # ── internal helpers ─────────────────────────
 

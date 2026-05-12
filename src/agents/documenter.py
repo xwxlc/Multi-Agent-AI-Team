@@ -24,7 +24,7 @@ class DocumenterAgent(BaseAgent):
 - 中文为主，技术术语保留英文
 - 输出时用 [FILE: path/to/file.md] 标记每个文件"""
 
-    async def execute(self) -> Artifact:
+    async def execute(self, task: str = "") -> Artifact:
         prd = self.memory.get_latest(ArtifactType.PRD)
         source_code = self.memory.get_latest(ArtifactType.SOURCE_CODE)
         test_report = self.memory.get_latest(ArtifactType.TEST_REPORT)
