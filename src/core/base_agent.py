@@ -74,6 +74,7 @@ class BaseAgent(ABC):
         self.provider: str = cfg.get("provider") or kwargs.get("provider") or "deepseek"
         self.max_retries: int = cfg.get("max_retries") or kwargs.get("max_retries", 3)
         self.retry_backoff: float = cfg.get("retry_backoff") or kwargs.get("retry_backoff", 2.0)
+        self.timeout: Optional[int] = cfg.get("timeout") or kwargs.get("timeout")
 
         # 内部状态
         self._history: list[dict[str, str]] = []
@@ -82,11 +83,27 @@ class BaseAgent(ABC):
     # ── run — public entry point ──────────────
 
     async def run(self, task: str) -> Artifact:
-        """带重试 + 日志 + 计时的统一入口。"""
+        """带重试 + 日志 + 计时的统一入口，含整体超时兜底。"""
         self.log(logging.INFO, "▶ 开始  |  %s 🤖 %s/%s",
                  task[:80], self.provider, self.model)
 
+        timeout = getattr(self, "timeout", None)
+        try:
+            if timeout and timeout > 0:
+                return await asyncio.wait_for(
+                    self._run_with_retry(task),
+                    timeout=timeout,
+                )
+            else:
+                return await self._run_with_retry(task)
+        except asyncio.TimeoutError:
+            elapsed = time.monotonic() - getattr(self, "_t_start", time.monotonic())
+            self.log(logging.ERROR, "⏰ 任务执行超时 (%ds)", timeout)
+            raise
+
+    async def _run_with_retry(self, task: str) -> Artifact:
         t_start = time.monotonic()
+        self._t_start = t_start
         last_exc: Optional[Exception] = None
 
         for attempt in range(1, self.max_retries + 1):

@@ -11,6 +11,7 @@ class TaskStatus(Enum):
     COMPLETED = "completed"
     FAILED = "failed"
     BLOCKED = "blocked"
+    TIMEOUT = "timeout"
 
 
 class Priority(Enum):

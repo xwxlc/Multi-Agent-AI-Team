@@ -7,3 +7,7 @@ workspace/
 project_output/
 node_modules/
 .DS_Store
+TASKS.md
+STATUS.md
+TASKS.md.lock
+.checkpoint/

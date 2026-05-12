@@ -8,6 +8,7 @@ from typing import Optional
 
 from ..core.base_agent import BaseAgent
 from ..core.memory import SharedMemory, Artifact, ArtifactType
+from ..core.sync import Checkpoint
 
 WORKSPACE = "workspace"
 
@@ -83,10 +84,25 @@ class DeveloperAgent(BaseAgent):
         """根据任务生成前端代码 + 测试文件，写入 workspace/。"""
         self._ensure_workspace()
 
+        # Check for previous checkpoint (resume support)
+        cp = Checkpoint.load("developer", getattr(self, "_current_task_id", ""))
+        if cp and cp.get("files_so_far"):
+            self.log(20, "Resuming from checkpoint: %d files already done",
+                     len(cp["files_so_far"]))
+
         prompt = self._build_prompt(task_description)
         response = await self.think(prompt)
 
         files_written = self._parse_and_write(response)
+
+        # Save checkpoint after each batch of file writes
+        if files_written:
+            Checkpoint.save("developer", getattr(self, "_current_task_id", "unknown"), {
+                "status": "in_progress",
+                "files_so_far": files_written,
+                "task": task_description[:200],
+            })
+
         summary = self._build_summary(response, files_written)
 
         return self._create_artifact(
