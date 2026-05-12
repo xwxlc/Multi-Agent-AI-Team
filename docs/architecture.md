@@ -81,16 +81,22 @@
 1. **新Agent**: 继承BaseAgent，实现`system_prompt()`和`execute()`
 2. **新工具**: 在`src/tools/`下添加，Agent通过BaseAgent方法调用
 3. **新工作流**: 修改Orchestrator的`run()`方法
-4. **LLM后端**: 兼容OpenAI API格式的任意模型（GPT-4o、Claude、本地Ollama等）
+4. **多模型路由**: LLMRouter 支持 OpenAI / Anthropic / DeepSeek 多种 API 格式，通过 agents.yaml 配置
 5. **持久化**: SharedMemory可扩展为数据库存储
 
 ## 环境变量
 
-| 变量 | 默认值 | 说明 |
-|------|--------|------|
-| LLM_API_KEY | - | API密钥（必填） |
-| LLM_API_BASE | https://api.openai.com/v1 | API地址 |
-| LLM_MODEL | gpt-4o | 模型名称 |
-| LLM_TEMPERATURE | 0.3 | 生成温度 |
-| WORK_DIR | ./project_output | 输出目录 |
-| MAX_RETRY | 3 | 最大重试次数 |
+配置统一由 `config/agents.yaml` 管理:
+
+| 配置文件 | 说明 |
+|----------|------|
+| `config/agents.yaml` | Agent 与 Provider 定义（模型、key、超时） |
+
+## Agent 模型分配
+
+| Agent | Provider | Model |
+|-------|----------|-------|
+| analyst | deepseek | deepseek-v4-pro |
+| developer | deepseek | deepseek-v4-flash |
+| tester | deepseek | deepseek-v4-flash |
+| writer | deepseek | deepseek-v4-pro |

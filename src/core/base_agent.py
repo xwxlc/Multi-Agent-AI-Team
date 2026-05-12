@@ -70,8 +70,8 @@ class BaseAgent(ABC):
 
         # 从 yaml 配置注入（优先），否则从 kwargs 取（向后兼容）
         self.name: str = cfg.get("name") or kwargs.get("name") or f"{self.role}-{_short_id()}"
-        self.model: str = cfg.get("model") or kwargs.get("model") or "gpt-4o"
-        self.provider: str = cfg.get("provider") or kwargs.get("provider") or "openai"
+        self.model: str = cfg.get("model") or kwargs.get("model") or "deepseek-v4-pro"
+        self.provider: str = cfg.get("provider") or kwargs.get("provider") or "deepseek"
         self.max_retries: int = cfg.get("max_retries") or kwargs.get("max_retries", 3)
         self.retry_backoff: float = cfg.get("retry_backoff") or kwargs.get("retry_backoff", 2.0)
 

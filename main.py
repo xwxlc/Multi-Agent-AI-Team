@@ -5,7 +5,7 @@
     python main.py
     或:  python main.py --config config/agents.yaml
     # 交互式输入需求，自动完成 分析→开发→测试→文档 全流程
-    # 4 个 Agent 分别使用不同模型: Claude / DeepSeek / GPT-4.1 / Claude
+    # 4 个 Agent 使用 DeepSeek v4 系列: pro / flash / flash / pro
 """
 
 import asyncio
@@ -58,11 +58,11 @@ def main():
     print("=" * 60)
     print(f"  配置: {config_path}")
     print()
-    print("  Agent 模型分配:")
-    print("    analyst   → Claude (Sonnet)")
-    print("    developer → DeepSeek")
-    print("    tester    → GPT-4.1")
-    print("    writer    → Claude (Sonnet)")
+    print("  Agent 模型分配 (DeepSeek):")
+    print("    analyst   → deepseek-v4-pro")
+    print("    developer → deepseek-v4-flash")
+    print("    tester    → deepseek-v4-flash")
+    print("    writer    → deepseek-v4-pro")
     print("=" * 60)
 
     # Check env vars
